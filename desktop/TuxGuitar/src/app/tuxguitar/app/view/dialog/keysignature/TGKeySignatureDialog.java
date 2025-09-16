@@ -138,6 +138,13 @@ public class TGKeySignatureDialog {
 		buttonsLayout.set(buttonCancel, UITableLayout.MARGIN_RIGHT, 0f);
 
 		TGDialogUtil.openDialog(dialog,TGDialogUtil.OPEN_STYLE_CENTER | TGDialogUtil.OPEN_STYLE_PACK);
+
+		keySignatures.addSelectionListener(new UISelectionListener() {
+			public void onSelect(UISelectionEvent event) {
+				changeKeySignature(context.getContext(), track, measure, keySignatures.getSelectedValue(), beatRange, applyToSelection.isSelected(), toEnd.isSelected());
+			}
+		});
+
 	}
 
 	public void changeKeySignature(TGContext context, TGTrack track, TGMeasure measure, Integer value, TGBeatRange beatRange, Boolean applyToSelection, Boolean applyToEnd) {
