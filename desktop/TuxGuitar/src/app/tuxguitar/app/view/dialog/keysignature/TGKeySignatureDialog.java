@@ -36,6 +36,7 @@ public class TGKeySignatureDialog {
 		final UIWindow uiParent = context.getAttribute(TGViewContext.ATTRIBUTE_PARENT);
 		final UITableLayout dialogLayout = new UITableLayout();
 		final UIWindow dialog = uiFactory.createWindow(uiParent, true, false);
+		final Integer currentKeySignature = measure.getKeySignature();
 
 		dialog.setLayout(dialogLayout);
 		dialog.setText(TuxGuitar.getProperty("composition.keysignature"));
@@ -131,6 +132,7 @@ public class TGKeySignatureDialog {
 		buttonCancel.setText(TuxGuitar.getProperty("cancel"));
 		buttonCancel.addSelectionListener(new UISelectionListener() {
 			public void onSelect(UISelectionEvent event) {
+				changeKeySignature(context.getContext(), track, measure, currentKeySignature, beatRange, applyToSelection.isSelected(), toEnd.isSelected());
 				dialog.dispose();
 			}
 		});
