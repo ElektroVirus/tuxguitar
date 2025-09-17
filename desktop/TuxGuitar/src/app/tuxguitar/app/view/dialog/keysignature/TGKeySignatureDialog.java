@@ -19,12 +19,15 @@ import app.tuxguitar.ui.widget.UIDropDownSelect;
 import app.tuxguitar.ui.widget.UILabel;
 import app.tuxguitar.ui.widget.UILegendPanel;
 import app.tuxguitar.ui.widget.UIPanel;
+import app.tuxguitar.ui.widget.UIRadioButton;
 import app.tuxguitar.ui.widget.UISelectItem;
 import app.tuxguitar.ui.widget.UIWindow;
 import app.tuxguitar.util.TGBeatRange;
 import app.tuxguitar.util.TGContext;
 
 public class TGKeySignatureDialog {
+	private boolean atLeastOneChangeToEnd = false;
+	private boolean atLeastOneChangeMarkedMeasures = false;
 
 	public void show(final TGViewContext context) {
 		final TGTrack track = context.getAttribute(TGDocumentContextAttributes.ATTRIBUTE_TRACK);
@@ -36,7 +39,9 @@ public class TGKeySignatureDialog {
 		final UIWindow uiParent = context.getAttribute(TGViewContext.ATTRIBUTE_PARENT);
 		final UITableLayout dialogLayout = new UITableLayout();
 		final UIWindow dialog = uiFactory.createWindow(uiParent, true, false);
-		final Integer currentKeySignature = measure.getKeySignature();
+		final Integer oldKeySignature = measure.getKeySignature();
+		atLeastOneChangeToEnd = false;
+		atLeastOneChangeMarkedMeasures = false;
 
 		dialog.setLayout(dialogLayout);
 		dialog.setText(TuxGuitar.getProperty("composition.keysignature"));
@@ -73,12 +78,13 @@ public class TGKeySignatureDialog {
 		keySignatureLayout.set(keySignatures, 1, 2, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true, 1, 1, 150f, null, null);
 
 		//--------------------Option Checkboxes-------------------------------
-		UITableLayout checkLayout = new UITableLayout();
-		UILegendPanel check = uiFactory.createLegendPanel(dialog);
-		check.setLayout(checkLayout);
-		check.setText(TuxGuitar.getProperty("options"));
-		dialogLayout.set(check, 2, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
+		// UITableLayout checkLayout = new UITableLayout();
+		// UILegendPanel check = uiFactory.createLegendPanel(dialog);
+		// check.setLayout(checkLayout);
+		// check.setText(TuxGuitar.getProperty("options"));
+		// dialogLayout.set(check, 2, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
 
+		/* Checkboxes: replaced by radio buttons
 		final UICheckBox applyToSelection = uiFactory.createCheckBox(check);
 		applyToSelection.setText(TuxGuitar.getProperty("composition.keysignature.apply-to-selection"));
 		checkLayout.set(applyToSelection, 1, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
@@ -86,7 +92,9 @@ public class TGKeySignatureDialog {
 		final UICheckBox toEnd = uiFactory.createCheckBox(check);
 		toEnd.setText(TuxGuitar.getProperty("composition.keysignature.to-the-end"));
 		checkLayout.set(toEnd, 2, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
+		*/
 
+		/*
 		if (isSelectionActive && (beatRange != null) && !beatRange.isEmpty()) {
 			applyToSelection.setEnabled(true);
 			applyToSelection.setSelected(true);
@@ -96,20 +104,71 @@ public class TGKeySignatureDialog {
 			applyToSelection.setSelected(false);
 			toEnd.setSelected(true);
 		}
+		*/
+
+		// If the menu is opened when some bars are selected, we shouldn't be able to choose between
+		// applying only for this or for whole selection. In the current implementation the bar which will
+		// be changed if only one bar should be affected, it's the one with the caret - usually the last bar.
+		// This is counter intuitive, since the user probably selects the bars
+		// left to right starting from the bar they want actually to change.
+		// Solution: if the user wants to change a single bar, don't offer a checkbox "Apply to selection".
+		//
+		// If no bars are selected, we offer two radio buttons: 
+		//  - only current measure 
+		//  - till the end.
+		//
+		// Still one bug:
+		//	- all trials in the drop down menu will go to the undo controller
+		//
+		// TODO:
+		//	- Create a label inside the options when no options are available, to explain the situation
+		//
+		//	changeKeySignature wants parameters:
+		//	 - applyToSelection: bool
+		//	 - applyToEnd: bool
+
+		// This is the panel where the radio buttons go
+		UITableLayout optionsLayout = new UITableLayout();
+		UILegendPanel options = uiFactory.createLegendPanel(dialog);
+		options.setLayout(optionsLayout);
+		options.setText(TuxGuitar.getProperty("options"));
+		dialogLayout.set(options, 2, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
+
+		// Only for the current measure
+		final UIRadioButton applyOnlyThis = uiFactory.createRadioButton(options);
+		applyOnlyThis.setText("Apply Only for the current measure");
+		optionsLayout.set(applyOnlyThis, 3, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
+		applyOnlyThis.setSelected(true);
+
+		// Apply to end
+		final UIRadioButton applyToEnd = uiFactory.createRadioButton(options);
+		applyToEnd.setText(TuxGuitar.getProperty("composition.tempo.position-to-end"));
+		optionsLayout.set(applyToEnd, 2, 1, UITableLayout.ALIGN_FILL, UITableLayout.ALIGN_FILL, true, true);
+
+		boolean dialogOpenedWithSelection = (isSelectionActive && (beatRange != null) && !beatRange.isEmpty());
+		if (dialogOpenedWithSelection) {
+			// Dialog was created with a selection
+			applyOnlyThis.setEnabled(false);
+			applyToEnd.setEnabled(false);
+		} else {
+			// Dialog was created without a selection
+			applyOnlyThis.setEnabled(true);
+			applyToEnd.setEnabled(true);
+		}
 
 		// check boxes are exclusive (no radio button: none of them may be selected)
-		toEnd.addSelectionListener(new UISelectionListener() {
-			@Override
-			public void onSelect(UISelectionEvent event) {
-				applyToSelection.setSelected(false);
-			}
-		});
-		applyToSelection.addSelectionListener(new UISelectionListener() {
-			@Override
-			public void onSelect(UISelectionEvent event) {
-				toEnd.setSelected(false);
-			}
-		});
+		// toEnd.addSelectionListener(new UISelectionListener() {
+		// 	@Override
+		// 	public void onSelect(UISelectionEvent event) {
+		// 		applyToSelection.setSelected(false);
+		// 	}
+		// });
+		// applyToSelection.addSelectionListener(new UISelectionListener() {
+		// 	@Override
+		// 	public void onSelect(UISelectionEvent event) {
+		// 		toEnd.setSelected(false);
+		// 	}
+		// });
 
 		//------------------BUTTONS--------------------------
 		UITableLayout buttonsLayout = new UITableLayout(0f);
@@ -122,7 +181,7 @@ public class TGKeySignatureDialog {
 		buttonOK.setDefaultButton();
 		buttonOK.addSelectionListener(new UISelectionListener() {
 			public void onSelect(UISelectionEvent event) {
-				changeKeySignature(context.getContext(), track, measure, keySignatures.getSelectedValue(), beatRange, applyToSelection.isSelected(), toEnd.isSelected());
+				changeKeySignature(context.getContext(), track, measure, keySignatures.getSelectedValue(), beatRange, dialogOpenedWithSelection, applyToEnd.isSelected());
 				dialog.dispose();
 			}
 		});
@@ -132,7 +191,7 @@ public class TGKeySignatureDialog {
 		buttonCancel.setText(TuxGuitar.getProperty("cancel"));
 		buttonCancel.addSelectionListener(new UISelectionListener() {
 			public void onSelect(UISelectionEvent event) {
-				changeKeySignature(context.getContext(), track, measure, currentKeySignature, beatRange, applyToSelection.isSelected(), toEnd.isSelected());
+				changeKeySignature(context.getContext(), track, measure, oldKeySignature, beatRange, dialogOpenedWithSelection, atLeastOneChangeToEnd);
 				dialog.dispose();
 			}
 		});
@@ -143,7 +202,13 @@ public class TGKeySignatureDialog {
 
 		keySignatures.addSelectionListener(new UISelectionListener() {
 			public void onSelect(UISelectionEvent event) {
-				changeKeySignature(context.getContext(), track, measure, keySignatures.getSelectedValue(), beatRange, applyToSelection.isSelected(), toEnd.isSelected());
+				// If at least once a change 'to end' was made, set the flag so the cancel-button cancels the operation accordingly
+				boolean flag_applyToEnd = false;
+				if (applyToEnd.isSelected()) {
+					atLeastOneChangeToEnd = true;
+					flag_applyToEnd = true;
+				}
+				changeKeySignature(context.getContext(), track, measure, keySignatures.getSelectedValue(), beatRange, dialogOpenedWithSelection, applyToEnd.isSelected());
 			}
 		});
 
